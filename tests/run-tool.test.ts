@@ -8,6 +8,7 @@ import {
   FileArgsError,
   handleRunTool,
   formatArguments,
+  runToolAnnotations,
 } from "../src/tools/run-tool.js";
 
 describe("resolveFileArgs", () => {
@@ -381,5 +382,19 @@ describe("formatArguments", () => {
     expect(out.length).toBeLessThan(2500);
     expect(out).toContain("more characters");
     expect(out).toContain("file_args");
+  });
+});
+
+describe("runToolAnnotations", () => {
+  it("marks run_tool read-only when HITL gates an elicitation-capable client", () => {
+    expect(runToolAnnotations(true, true)).toEqual({ readOnlyHint: true });
+  });
+
+  it("leaves annotations unset when HITL is disabled", () => {
+    expect(runToolAnnotations(false, true)).toBeUndefined();
+  });
+
+  it("leaves annotations unset when the client cannot elicit", () => {
+    expect(runToolAnnotations(true, false)).toBeUndefined();
   });
 });

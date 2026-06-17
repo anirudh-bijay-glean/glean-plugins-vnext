@@ -31222,6 +31222,9 @@ function buildRemoteArgs(serverId, toolName, resolvedArgs) {
     arguments: resolvedArgs
   };
 }
+function runToolAnnotations(enableHitl, clientSupportsElicitation) {
+  return enableHitl && clientSupportsElicitation ? { readOnlyHint: true } : void 0;
+}
 
 // src/url-config-store.ts
 import fs5 from "node:fs";
@@ -31599,7 +31602,14 @@ var SETUP_TOOL = {
   }
 };
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const tools = [FIND_SKILLS_TOOL, RUN_TOOL_TOOL, SETUP_TOOL];
+  const runTool = {
+    ...RUN_TOOL_TOOL,
+    annotations: runToolAnnotations(
+      process.env.ENABLE_HITL === "true",
+      !!server.getClientCapabilities()?.elicitation
+    )
+  };
+  const tools = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL];
   const serverUrl = resolveServerUrl();
   if (!serverUrl) {
     return { tools: [...tools, ...cachedRemoteTools] };
