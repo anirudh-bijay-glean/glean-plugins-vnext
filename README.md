@@ -93,6 +93,39 @@ For local development, point the marketplace at your local checkout instead:
 
 Then just `git checkout` whichever branch you want to test.
 
+## Configuration
+
+The plugin is configured entirely through environment variables. None are
+required for normal use — the launcher (`plugins/glean/start.sh`) derives the
+storage and session variables from what the host provides, and the server URL
+is captured by the `setup` tool on first run. The variables below are read
+directly by the server bundle.
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `GLEAN_MCP_SERVER_URL` | Overrides the Glean server URL. When unset, the URL saved by the `setup` tool is used. | (stored config from `setup`) |
+| `ENABLE_HITL` | Enables human-in-the-loop confirmation before `run_tool` executes a downstream tool. Active only when set to exactly `true`. | disabled |
+| `HITL_TIMEOUT_MS` | Timeout, in milliseconds, for a human-in-the-loop confirmation prompt. Must be a positive integer. | `300000` (5 min) |
+| `GLEAN_FILE_ARG_MAX_BYTES` | Maximum size, in bytes, of each file read via `run_tool`'s `file_args`. Must be a positive integer. | `1048576` (1 MiB) |
+| `PLUGIN_DATA_DIR` | Directory for cached credentials, pending-auth state, the remote-tools cache, the saved server URL, and `glean-server.log`. | `~/.glean` |
+| `SKILLS_BASE_DIR` | Directory where discovered skill files are written. | `/tmp/glean-skills-cache` |
+| `GLEAN_SESSION_ID` | Chat session id sent with backend calls. | a UUID generated once per process |
+
+Empty values and un-interpolated `${VAR}` placeholders are ignored, so a host
+that passes an unset variable through verbatim falls back to the default.
+
+### Launcher-managed variables
+
+`start.sh` runs host-side and normalizes the following host inputs into the
+plugin variables above, keeping the server bundle host-agnostic:
+
+| Host variable | Effect |
+| --- | --- |
+| `CLAUDE_PLUGIN_DATA` | Host-managed lifecycle dir. When set, both `PLUGIN_DATA_DIR` and `SKILLS_BASE_DIR` (as `<dir>/glean-skills-cache`) are anchored under it. |
+| `USE_CLAUDE_PROJECT_DIR` | Opt-in (`=1`): routes the skills cache under the launch project's `.claude/tmp/` so the `glean_run` skill's `Read` glob can match cache files. |
+| `CLAUDE_CODE_SESSION_ID` | Copied into `GLEAN_SESSION_ID` so the session id tracks the host conversation. |
+| `HOME` | Fallback base for `PLUGIN_DATA_DIR` (`~/.glean`) and `SKILLS_BASE_DIR` when `CLAUDE_PLUGIN_DATA` is absent. |
+
 ## Troubleshooting
 
 - **Sign-in loop** — the cached OAuth provider state may be stale. Delete
