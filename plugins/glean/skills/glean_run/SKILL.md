@@ -25,8 +25,7 @@ When this happens:
      instructions. Relay them, ask the user for their Glean Server instance
      (QE) URL, then call `setup` again with `server_url` set to that URL.
    - Once a Server URL is configured, `setup` opens the Glean sign-in page in
-     the browser and waits for sign-in. The authorization code is captured
-     automatically on a local loopback — there is **nothing to paste**.
+     the browser and waits for sign-in.
 2. Once `setup` returns "Glean setup is complete", retry the original tool
    call.
 
