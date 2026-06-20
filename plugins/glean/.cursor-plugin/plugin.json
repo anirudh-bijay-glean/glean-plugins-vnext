@@ -8,9 +8,20 @@
   },
   "homepage": "https://www.glean.com",
   "logo": "assets/GLN_logo-icon-Primary.png",
-  "keywords": ["glean", "enterprise-search", "jira", "slack", "salesforce"],
+  "keywords": [
+    "glean",
+    "enterprise-search",
+    "jira",
+    "slack",
+    "salesforce"
+  ],
   "category": "productivity",
-  "tags": ["search", "enterprise", "mcp", "tools"],
+  "tags": [
+    "search",
+    "enterprise",
+    "mcp",
+    "tools"
+  ],
   "skills": "./skills/",
   "mcpServers": ".mcp.json"
 }

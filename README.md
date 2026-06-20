@@ -138,7 +138,8 @@ plugin variables above, keeping the server bundle host-agnostic:
 | --- | --- |
 | `CLAUDE_PLUGIN_DATA` | Host-managed lifecycle dir. When set, both `PLUGIN_DATA_DIR` and `SKILLS_BASE_DIR` (as `<dir>/glean-skills-cache`) are anchored under it. |
 | `USE_CLAUDE_PROJECT_DIR` | Opt-in (`=1`): routes the skills cache under the launch project's `.claude/tmp/` so the `glean_run` skill's `Read` glob can match cache files. |
-| `CLAUDE_CODE_SESSION_ID` | Copied into `GLEAN_SESSION_ID` so the session id tracks the host conversation. |
+| `CLAUDE_CODE_SESSION_ID` | Claude Code's conversation id; copied into `GLEAN_SESSION_ID` so the session id tracks the host conversation. |
+| `CODEX_THREAD_ID` | Codex's conversation id; used as `GLEAN_SESSION_ID` when `CLAUDE_CODE_SESSION_ID` is unset. (Cursor exposes no session id, so the plugin generates one.) |
 | `HOME` | Fallback base for `PLUGIN_DATA_DIR` (`~/.glean`) and `SKILLS_BASE_DIR` when `CLAUDE_PLUGIN_DATA` is absent. |
 
 ## Troubleshooting
