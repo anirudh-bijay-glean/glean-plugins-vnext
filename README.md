@@ -117,7 +117,7 @@ runtime behavior. None are required for normal use.
 | `ENABLE_HITL` | Enables human-in-the-loop confirmation before `run_tool` executes a downstream tool. Active only when set to exactly `true`. | disabled |
 | `HITL_TIMEOUT_MS` | Timeout, in milliseconds, for a human-in-the-loop confirmation prompt. Must be a positive integer. | `300000` (5 min) |
 | `GLEAN_FILE_ARG_MAX_BYTES` | Maximum size, in bytes, of each file read via `run_tool`'s `file_args`. Must be a positive integer. | `1048576` (1 MiB) |
-| `PLUGIN_DATA_DIR` | Directory for cached credentials, pending-auth state, the remote-tools cache, the saved server URL, and `glean-server.log`. | `~/.glean` |
+| `PLUGIN_DATA_DIR` | Directory for cached credentials, pending-auth state, the remote-tools cache, the saved server URL, and `glean-server.log`. Will also hold staged arguments for write tools. | `~/.glean` |
 | `SKILLS_BASE_DIR` | Directory where discovered skill files are written. | `/tmp/glean-skills-cache` |
 | `GLEAN_SESSION_ID` | Chat session id sent with backend calls. | a UUID generated once per process |
 
