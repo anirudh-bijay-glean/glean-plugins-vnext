@@ -170,6 +170,45 @@ function buildApprovalMessage(
   return [`Action: ${toolName}`, "Arguments:", formatArguments(args)].join("\n");
 }
 
+// Appended to a connector AUTH_REQUIRED result so the model understands the
+// downstream connector (not Glean) needs authorization, and does not confuse it
+// with the plugin's own [SETUP_REQUIRED] Glean sign-in.
+const CONNECTOR_AUTH_SUFFIX =
+  "Note: Glean itself is already authenticated. This is a downstream " +
+  "connector/tool authorization request — NOT [SETUP_REQUIRED]. Do not call " +
+  "the `setup` tool. Have the user authorize using the link above, then retry " +
+  "this tool.";
+
+// Detect the gateway's connector AUTH_REQUIRED envelope: an error result whose
+// first text content is JSON carrying a non-empty `authUrls` array. This is
+// third-party connector auth (the user authorizing e.g. Jira/Slack) — distinct
+// from the plugin's own [SETUP_REQUIRED] Glean sign-in.
+function isConnectorAuth(result: CallToolResult): boolean {
+  if (!result.isError) return false;
+  const text = result.content?.find((c) => c.type === "text");
+  if (!text || text.type !== "text") return false;
+  try {
+    const parsed = JSON.parse(text.text);
+    return (
+      !!parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { authUrls?: unknown }).authUrls) &&
+      (parsed as { authUrls: unknown[] }).authUrls.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Append the connector-auth clarification as an extra text block, leaving the
+// gateway's original content (links and all) untouched.
+function withConnectorAuthSuffix(result: CallToolResult): CallToolResult {
+  return {
+    ...result,
+    content: [...result.content, { type: "text", text: CONNECTOR_AUTH_SUFFIX }],
+  };
+}
+
 export async function handleRunTool(
   remoteClient: Client,
   mcpServer: Server,
@@ -250,11 +289,23 @@ export async function handleRunTool(
     throw err;
   }
 
-  return callRemoteTool(
+  const result = await callRemoteTool(
     remoteClient,
     "run_tool",
     buildRemoteArgs(serverId, toolName, resolvedArgs),
   );
+
+  // A downstream connector (Jira/Slack/...) can require the user to authorize
+  // their account even though Glean itself is authenticated. The gateway
+  // surfaces that as an error result whose text is a JSON envelope with
+  // `authUrls`. Append a clarification so the model doesn't confuse it with the
+  // plugin's own [SETUP_REQUIRED] and wrongly call `setup`. The gateway's
+  // original content (including the link) is left untouched.
+  if (isConnectorAuth(result)) {
+    return withConnectorAuthSuffix(result);
+  }
+
+  return result;
 }
 
 /**
