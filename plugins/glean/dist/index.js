@@ -26374,27 +26374,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       !!server.getClientCapabilities()?.elicitation
     )
   };
-  const tools = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL];
-  const staticCount = tools.length;
-  const serve = (reason2) => {
-    const names = tools.slice(staticCount).map((t) => t.name);
+  const staticTools = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL];
+  const serve = (state, dynamic) => {
     logLine("tools-list.served", {
-      static: staticCount,
-      dynamic: names.length,
-      names,
-      reason: reason2
+      static: staticTools.length,
+      dynamic: dynamic.length,
+      names: dynamic.map((t) => t.name),
+      state
     });
-    return { tools };
+    return { tools: [...staticTools, ...dynamic] };
   };
   const serverUrl = resolveServerUrl();
   if (!serverUrl) {
-    tools.push(...cachedRemoteTools);
-    return serve("unconfigured");
+    return serve("unconfigured", cachedRemoteTools);
   }
   const provider = getOAuthProvider();
   if (!provider.tokens()) {
-    tools.push(...cachedRemoteTools);
-    return serve("unauthenticated");
+    return serve("unauthenticated", cachedRemoteTools);
   }
   let remoteClient;
   try {
@@ -26406,24 +26402,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logLine("connect.backend-error", { label: "tools/list", msg });
-    tools.push(...cachedRemoteTools);
-    return serve("connect-error");
+    return serve("connect-error", cachedRemoteTools);
   }
-  let reason = "fetched";
   try {
     const remoteTools = await fetchAllowedRemoteTools(remoteClient);
     cachedRemoteTools = remoteTools;
     saveRemoteTools(serverUrl, remoteTools);
-    tools.push(...remoteTools);
+    return serve("fetched", remoteTools);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logLine("tools-list.fetch-failed", { label: "tools/list", msg });
-    tools.push(...cachedRemoteTools);
-    reason = "fetch-failed";
+    return serve("fetch-failed", cachedRemoteTools);
   } finally {
     await remoteClient.close();
   }
-  return serve(reason);
 });
 var SIGN_IN_WAIT_MS = 3e5;
 function withTimeout(p, ms) {
