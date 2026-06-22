@@ -25886,6 +25886,19 @@ async function handleRunTool(remoteClient, mcpServer, skillsBaseDir, args) {
       isError: true
     };
   }
+  const baseArgs = args.arguments != null && typeof args.arguments === "object" ? args.arguments : {};
+  let resolvedArgs;
+  try {
+    resolvedArgs = await resolveFileArgs(args.file_args, baseArgs);
+  } catch (err) {
+    if (err instanceof FileArgsError) {
+      return {
+        content: [{ type: "text", text: err.message }],
+        isError: true
+      };
+    }
+    throw err;
+  }
   const hitlEnabled = process.env.ENABLE_HITL === "true";
   if (hitlEnabled && mcpServer.getClientCapabilities()?.elicitation) {
     const toolMeta = await findToolJson(skillsBaseDir, toolName);
@@ -25893,7 +25906,7 @@ async function handleRunTool(remoteClient, mcpServer, skillsBaseDir, args) {
       const message = await buildApprovalMessage(
         mcpServer,
         toolName,
-        args.arguments
+        resolvedArgs
       );
       const timeout = hitlTimeoutMs();
       try {
@@ -25927,19 +25940,6 @@ async function handleRunTool(remoteClient, mcpServer, skillsBaseDir, args) {
         };
       }
     }
-  }
-  const baseArgs = args.arguments != null && typeof args.arguments === "object" ? args.arguments : {};
-  let resolvedArgs;
-  try {
-    resolvedArgs = await resolveFileArgs(args.file_args, baseArgs);
-  } catch (err) {
-    if (err instanceof FileArgsError) {
-      return {
-        content: [{ type: "text", text: err.message }],
-        isError: true
-      };
-    }
-    throw err;
   }
   return callRemoteTool(
     remoteClient,

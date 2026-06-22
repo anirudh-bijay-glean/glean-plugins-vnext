@@ -195,6 +195,26 @@ export async function handleRunTool(
     };
   }
 
+  // Resolve file_args up front so the approval prompt shows the COMPLETE input
+  // (file-sourced values included, not just the inline `arguments`), and so an
+  // unreadable file_args path fails before we prompt the user.
+  const baseArgs =
+    args.arguments != null && typeof args.arguments === "object"
+      ? (args.arguments as Record<string, unknown>)
+      : {};
+  let resolvedArgs: Record<string, unknown>;
+  try {
+    resolvedArgs = await resolveFileArgs(args.file_args, baseArgs);
+  } catch (err) {
+    if (err instanceof FileArgsError) {
+      return {
+        content: [{ type: "text", text: err.message }],
+        isError: true,
+      };
+    }
+    throw err;
+  }
+
   const hitlEnabled = process.env.ENABLE_HITL === "true";
   if (hitlEnabled && mcpServer.getClientCapabilities()?.elicitation) {
     const toolMeta = await findToolJson(skillsBaseDir, toolName);
@@ -203,7 +223,7 @@ export async function handleRunTool(
       const message = await buildApprovalMessage(
         mcpServer,
         toolName,
-        args.arguments,
+        resolvedArgs,
       );
       const timeout = hitlTimeoutMs();
 
@@ -242,23 +262,6 @@ export async function handleRunTool(
         };
       }
     }
-  }
-
-  const baseArgs =
-    args.arguments != null && typeof args.arguments === "object"
-      ? (args.arguments as Record<string, unknown>)
-      : {};
-  let resolvedArgs: Record<string, unknown>;
-  try {
-    resolvedArgs = await resolveFileArgs(args.file_args, baseArgs);
-  } catch (err) {
-    if (err instanceof FileArgsError) {
-      return {
-        content: [{ type: "text", text: err.message }],
-        isError: true,
-      };
-    }
-    throw err;
   }
 
   return callRemoteTool(

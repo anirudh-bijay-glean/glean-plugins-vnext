@@ -375,6 +375,47 @@ describe("handleRunTool (HITL)", () => {
     expect(fileContent).toContain("## body");
     await fs.rm(filePath, { force: true });
   });
+
+  it("surfaces file_args content in the approval prompt", async () => {
+    vi.stubEnv("ENABLE_HITL", "true");
+    const remote = makeRemote();
+    const elicit = vi.fn().mockResolvedValue({ action: "accept" });
+    const server = makeServer({ elicitation: true, elicit });
+    await writeToolJson(tmpDir, "create_doc", { requires_approval: true });
+    const bodyFile = path.join(tmpDir, "draft.md");
+    await fs.writeFile(bodyFile, "FILE_SOURCED_BODY", "utf-8");
+
+    await handleRunTool(remote, server, tmpDir, {
+      server_id: "s",
+      tool_name: "create_doc",
+      arguments: { title: "Doc" },
+      file_args: { body: bodyFile },
+    });
+
+    const message = elicit.mock.calls[0][0].message as string;
+    expect(message).toContain("TITLE: Doc");
+    expect(message).toContain("BODY: FILE_SOURCED_BODY"); // file-sourced arg shown
+    expect(remote.callTool).toHaveBeenCalledTimes(1); // executed on accept
+  });
+
+  it("fails before prompting when a file_args path is unreadable", async () => {
+    vi.stubEnv("ENABLE_HITL", "true");
+    const remote = makeRemote();
+    const elicit = vi.fn().mockResolvedValue({ action: "accept" });
+    const server = makeServer({ elicitation: true, elicit });
+    await writeToolJson(tmpDir, "create_doc", { requires_approval: true });
+
+    const result = await handleRunTool(remote, server, tmpDir, {
+      server_id: "s",
+      tool_name: "create_doc",
+      arguments: {},
+      file_args: { body: "/no/such/abs/path.md" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(elicit).not.toHaveBeenCalled(); // no prompt for unreadable input
+    expect(remote.callTool).not.toHaveBeenCalled();
+  });
 });
 
 describe("buildCompactArgs", () => {
