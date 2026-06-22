@@ -21,6 +21,11 @@ import {
 } from "./auth-callback-server.js";
 import { handleFindSkills } from "./tools/find-skills.js";
 import { handleRunTool, runToolAnnotations } from "./tools/run-tool.js";
+import {
+  SUBMIT_FEEDBACK_TOOL,
+  handleSubmitFeedback,
+  submitFeedbackAnnotations,
+} from "./tools/submit-feedback.js";
 import { evictStaleSkills } from "./skill-writer.js";
 import {
   loadServerUrl,
@@ -275,7 +280,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       !!server.getClientCapabilities()?.elicitation,
     ),
   };
-  const tools: Tool[] = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL];
+  const submitFeedback: Tool = {
+    ...SUBMIT_FEEDBACK_TOOL,
+    annotations: submitFeedbackAnnotations(
+      !!server.getClientCapabilities()?.elicitation,
+    ),
+  };
+  const tools: Tool[] = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL, submitFeedback];
 
   // Pre-auth gate: tokens() is sync. When unauthenticated (or unconfigured)
   // skip the remote round-trip — but keep surfacing whatever we successfully
@@ -781,6 +792,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       return await advanceSetup();
     }
+
+    case "submit_feedback":
+      // Local-only: no server URL / token gate. On consent it writes a redacted
+      // transcript artifact to disk; the upload to Glean is stubbed in this POC.
+      return await handleSubmitFeedback(server, args, logLine);
 
     default:
       return {

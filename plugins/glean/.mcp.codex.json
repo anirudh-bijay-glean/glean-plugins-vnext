@@ -6,7 +6,8 @@
       "cwd": ".",
       "env": {
         "ENABLE_HITL": "true",
-        "HITL_TIMEOUT_MS": "300000"
+        "HITL_TIMEOUT_MS": "300000",
+        "GLEAN_SESSION_CAPTURE": "false"
       }
     }
   }
