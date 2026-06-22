@@ -26375,13 +26375,26 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     )
   };
   const tools = [FIND_SKILLS_TOOL, runTool, SETUP_TOOL];
+  const staticCount = tools.length;
+  const serve = (reason2) => {
+    const names = tools.slice(staticCount).map((t) => t.name);
+    logLine("tools-list.served", {
+      static: staticCount,
+      dynamic: names.length,
+      names,
+      reason: reason2
+    });
+    return { tools };
+  };
   const serverUrl = resolveServerUrl();
   if (!serverUrl) {
-    return { tools: [...tools, ...cachedRemoteTools] };
+    tools.push(...cachedRemoteTools);
+    return serve("unconfigured");
   }
   const provider = getOAuthProvider();
   if (!provider.tokens()) {
-    return { tools: [...tools, ...cachedRemoteTools] };
+    tools.push(...cachedRemoteTools);
+    return serve("unauthenticated");
   }
   let remoteClient;
   try {
@@ -26393,8 +26406,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logLine("connect.backend-error", { label: "tools/list", msg });
-    return { tools: [...tools, ...cachedRemoteTools] };
+    tools.push(...cachedRemoteTools);
+    return serve("connect-error");
   }
+  let reason = "fetched";
   try {
     const remoteTools = await fetchAllowedRemoteTools(remoteClient);
     cachedRemoteTools = remoteTools;
@@ -26404,10 +26419,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     const msg = err instanceof Error ? err.message : String(err);
     logLine("tools-list.fetch-failed", { label: "tools/list", msg });
     tools.push(...cachedRemoteTools);
+    reason = "fetch-failed";
   } finally {
     await remoteClient.close();
   }
-  return { tools };
+  return serve(reason);
 });
 var SIGN_IN_WAIT_MS = 3e5;
 function withTimeout(p, ms) {
