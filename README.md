@@ -34,14 +34,12 @@ all hosts. For Cursor, see
 
 ## First run
 
-## First run
-
 Setup resolves your Glean instance automatically from your work email, then
 triggers OAuth sign-in to Glean via the `setup` tool. `setup` opens the Glean
 sign-in page in your browser and captures the authorization code in-context
-through a local loopback callback — no copy-paste. After sign-in, OAuth
-credentials are cached to `~/.glean/` and reused across sessions — you won't be
-prompted again until the refresh token expires.
+through a local loopback callback. After sign-in, OAuth credentials are cached
+to `~/.glean/` and reused across sessions — you won't be prompted again until
+the refresh token expires.
 
 ### Setting the Server URL manually
 
@@ -133,13 +131,15 @@ every launch and setting them yourself has no effect:
 
 ## Troubleshooting
 
-- **Sign-in loop or stale auth** — call the `setup` tool with `reset=true` to
-  clear the saved configuration and credentials, then call `setup` again to
+- **Sign-in loop or stale auth** — prompt the agent to reset and sign in again
+  (e.g. "reset the Glean setup"). It calls the `setup` tool with `reset=true` to
+  clear the saved configuration and credentials, then runs `setup` again to
   re-authenticate.
 - **Tools return `[SETUP_REQUIRED]`** — the plugin isn't configured or
-  authenticated yet. Call the `setup` tool (no arguments) to advance through
-  the next missing stage: saving the Server URL, signing in, then fetching the
-  remote tool catalog.
+  authenticated yet. Prompt the agent to set up Glean (e.g. "set up Glean").
+  The `setup` tool, called with no arguments, advances through the next missing
+  stage: saving the Server URL, signing in, then fetching the remote tool
+  catalog.
 
 ## Development
 

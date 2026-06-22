@@ -1,6 +1,6 @@
 #!/bin/bash
-# Invoked by the plugin host (Cowork or Claude Code) to launch the Glean MCP
-# server. The plugin ships a single-file esbuild output at dist/index.js with
+# Invoked by the plugin host (Claude Code, Codex, or Cursor) to launch the Glean
+# MCP server. The plugin ships a single-file esbuild output at dist/index.js with
 # every non-builtin inlined — no node_modules next to it. This script handles
 # env sanitation before launching the Node process.
 set -e
