@@ -1,16 +1,23 @@
 #!/usr/bin/env node
-// PROTOTYPE (flag-gated). PreToolUse hook for Claude Code.
+// PreToolUse hook for Claude Code.
 //
-// When HITL is the approval gate, the plugin's own elicitation prompt is the
-// single source of truth for approving a run_tool call — so Claude Code's
-// separate native "allow this tool?" prompt is redundant (the double-prompt).
-// When HITL_AUTO_APPROVE=true AND ENABLE_HITL=true, auto-approve the run_tool
-// call so only the HITL prompt remains.
+// When HITL is enabled, run_tool is gated by the plugin's own elicitation
+// prompt, so Claude Code's separate native "allow this tool?" prompt is
+// redundant (the double-prompt). find_skills and setup are read-only, so
+// their native prompt is redundant too. With ENABLE_HITL=true we auto-approve
+// these glean read-only tools, leaving only the relevant gate.
 //
-// Safety: never auto-approves when ENABLE_HITL is not "true" — otherwise a
-// write action could run with no approval at all. Default flag is off.
+// Safety: run_tool is read-only ONLY while HITL gates it. This hook runs only
+// under Claude Code, which always advertises the elicitation capability, so
+// ENABLE_HITL=true means run_tool's HITL prompt is active — never an ungated
+// write. When ENABLE_HITL is not "true" the hook does nothing and the normal
+// permission flow runs.
 import fs from "node:fs";
 import path from "node:path";
+
+// Glean tools whose native permission prompt is safe to suppress: run_tool
+// (gated by HITL) plus the always-read-only find_skills/setup.
+const readOnlyTools = new Set(["run_tool", "find_skills", "setup"]);
 
 function readStdin() {
   try {
@@ -28,10 +35,14 @@ try {
 }
 
 const toolName = String(input.tool_name ?? "");
-// Only this plugin's run_tool meta-tool (exposed as mcp__<server>__run_tool).
-if (!toolName.endsWith("run_tool")) process.exit(0);
+const bareName = toolName.split("__").pop() ?? "";
+// Scope strictly to this plugin's read-only tools — the tool name carries the
+// glean plugin/server prefix (e.g. mcp__plugin_glean-vnext_glean__run_tool).
+if (!toolName.includes("glean") || !readOnlyTools.has(bareName)) {
+  process.exit(0);
+}
 
-// The hook process does not inherit the MCP server's env, so read the flags
+// The hook process does not inherit the MCP server's env, so read the flag
 // from the plugin's own .mcp.json.
 let env = {};
 try {
@@ -42,17 +53,14 @@ try {
   // No readable config: do nothing.
 }
 
-const hitlOn = env.ENABLE_HITL === "true";
-const autoApprove = env.HITL_AUTO_APPROVE === "true";
-
-if (hitlOn && autoApprove) {
+if (env.ENABLE_HITL === "true") {
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "allow",
         permissionDecisionReason:
-          "Glean HITL gates run_tool via its own elicitation prompt; suppressing the redundant native prompt (HITL_AUTO_APPROVE).",
+          "Glean run_tool is gated by its own HITL elicitation prompt; find_skills/setup are read-only. Suppressing the redundant native prompt while ENABLE_HITL is on.",
       },
     }),
   );

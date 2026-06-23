@@ -37,33 +37,32 @@ async function runHook(
   }
 }
 
-describe("auto-approve-run-tool hook (prototype, flag-gated)", () => {
-  const RUN_TOOL = "mcp__plugin_glean-vnext_glean__run_tool";
-  const onOn = { ENABLE_HITL: "true", HITL_AUTO_APPROVE: "true" };
+const glean = (tool: string) => `mcp__plugin_glean-vnext_glean__${tool}`;
+const hitlOn = { ENABLE_HITL: "true" };
+const hitlOff = { ENABLE_HITL: "false" };
 
-  it("allows run_tool when HITL is on and the flag is on", async () => {
-    const out = await runHook(RUN_TOOL, onOn);
-    expect(JSON.parse(out).hookSpecificOutput.permissionDecision).toBe("allow");
-  });
-
-  it("does nothing when the flag is off", async () => {
-    const out = await runHook(RUN_TOOL, {
-      ENABLE_HITL: "true",
-      HITL_AUTO_APPROVE: "false",
+describe("auto-approve hook (Claude Code PreToolUse)", () => {
+  for (const tool of ["run_tool", "find_skills", "setup"]) {
+    it(`allows glean ${tool} when HITL is on`, async () => {
+      const out = await runHook(glean(tool), hitlOn);
+      expect(JSON.parse(out).hookSpecificOutput.permissionDecision).toBe(
+        "allow",
+      );
     });
+  }
+
+  it("never allows when HITL is off, even for run_tool (safety)", async () => {
+    const out = await runHook(glean("run_tool"), hitlOff);
     expect(out.trim()).toBe("");
   });
 
-  it("never allows when HITL is off, even with the flag on (safety)", async () => {
-    const out = await runHook(RUN_TOOL, {
-      ENABLE_HITL: "false",
-      HITL_AUTO_APPROVE: "true",
-    });
+  it("ignores a non-glean run_tool (scoped to this plugin)", async () => {
+    const out = await runHook("mcp__other-server__run_tool", hitlOn);
     expect(out.trim()).toBe("");
   });
 
-  it("ignores tools other than run_tool", async () => {
-    const out = await runHook("mcp__plugin_glean-vnext_glean__search", onOn);
+  it("ignores glean tools that are not read-only (e.g. search)", async () => {
+    const out = await runHook(glean("search"), hitlOn);
     expect(out.trim()).toBe("");
   });
 });

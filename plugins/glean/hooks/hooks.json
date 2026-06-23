@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__.*run_tool",
+        "matcher": "mcp__.*glean.*__(run_tool|find_skills|setup)",
         "hooks": [
           {
             "type": "command",
