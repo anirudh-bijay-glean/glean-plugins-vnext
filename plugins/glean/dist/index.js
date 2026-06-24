@@ -25875,6 +25875,13 @@ async function buildApprovalMessage(mcpServer, toolName, args) {
   }
   return message.join("\n");
 }
+var elicitationIdPrimed = /* @__PURE__ */ new WeakSet();
+function primeElicitationCancellation(mcpServer) {
+  if (elicitationIdPrimed.has(mcpServer)) return;
+  elicitationIdPrimed.add(mcpServer);
+  void mcpServer.request({ method: "ping" }, EmptyResultSchema).catch(() => {
+  });
+}
 async function handleRunTool(remoteClient, mcpServer, skillsBaseDir, args) {
   const serverId = args.server_id;
   const toolName = args.tool_name;
@@ -25909,6 +25916,7 @@ async function handleRunTool(remoteClient, mcpServer, skillsBaseDir, args) {
         resolvedArgs
       );
       const timeout = hitlTimeoutMs();
+      primeElicitationCancellation(mcpServer);
       try {
         const result = await mcpServer.elicitInput(
           {
