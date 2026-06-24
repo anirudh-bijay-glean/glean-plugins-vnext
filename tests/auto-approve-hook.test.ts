@@ -41,17 +41,13 @@ const glean = (tool: string) => `mcp__plugin_glean-vnext_glean__${tool}`;
 const hitlOn = { ENABLE_HITL: "true" };
 const hitlOff = { ENABLE_HITL: "false" };
 
-describe("auto-approve hook (Claude Code PreToolUse)", () => {
-  for (const tool of ["run_tool", "find_skills", "setup"]) {
-    it(`allows glean ${tool} when HITL is on`, async () => {
-      const out = await runHook(glean(tool), hitlOn);
-      expect(JSON.parse(out).hookSpecificOutput.permissionDecision).toBe(
-        "allow",
-      );
-    });
-  }
+describe("auto-approve-run-tool hook (Claude Code PreToolUse)", () => {
+  it("allows glean run_tool when HITL is on", async () => {
+    const out = await runHook(glean("run_tool"), hitlOn);
+    expect(JSON.parse(out).hookSpecificOutput.permissionDecision).toBe("allow");
+  });
 
-  it("never allows when HITL is off, even for run_tool (safety)", async () => {
+  it("never allows when HITL is off (safety)", async () => {
     const out = await runHook(glean("run_tool"), hitlOff);
     expect(out.trim()).toBe("");
   });
@@ -61,8 +57,8 @@ describe("auto-approve hook (Claude Code PreToolUse)", () => {
     expect(out.trim()).toBe("");
   });
 
-  it("ignores glean tools that are not read-only (e.g. search)", async () => {
-    const out = await runHook(glean("search"), hitlOn);
+  it("ignores glean tools other than run_tool (e.g. find_skills)", async () => {
+    const out = await runHook(glean("find_skills"), hitlOn);
     expect(out.trim()).toBe("");
   });
 });

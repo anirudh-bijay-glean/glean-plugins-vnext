@@ -3,9 +3,8 @@
 //
 // When HITL is enabled, run_tool is gated by the plugin's own elicitation
 // prompt, so Claude Code's separate native "allow this tool?" prompt is
-// redundant (the double-prompt). find_skills and setup are read-only, so
-// their native prompt is redundant too. With ENABLE_HITL=true we auto-approve
-// these glean read-only tools, leaving only the relevant gate.
+// redundant (the double-prompt). With ENABLE_HITL=true we auto-approve the
+// run_tool call, leaving the HITL elicitation as the single gate.
 //
 // Safety: run_tool is read-only ONLY while HITL gates it. This hook runs only
 // under Claude Code, which always advertises the elicitation capability, so
@@ -14,10 +13,6 @@
 // permission flow runs.
 import fs from "node:fs";
 import path from "node:path";
-
-// Glean tools whose native permission prompt is safe to suppress: run_tool
-// (gated by HITL) plus the always-read-only find_skills/setup.
-const readOnlyTools = new Set(["run_tool", "find_skills", "setup"]);
 
 function readStdin() {
   try {
@@ -36,9 +31,9 @@ try {
 
 const toolName = String(input.tool_name ?? "");
 const bareName = toolName.split("__").pop() ?? "";
-// Scope strictly to this plugin's read-only tools — the tool name carries the
-// glean plugin/server prefix (e.g. mcp__plugin_glean-vnext_glean__run_tool).
-if (!toolName.includes("glean") || !readOnlyTools.has(bareName)) {
+// Scope strictly to this plugin's run_tool — the tool name carries the glean
+// plugin/server prefix (e.g. mcp__plugin_glean-vnext_glean__run_tool).
+if (!toolName.includes("glean") || bareName !== "run_tool") {
   process.exit(0);
 }
 
@@ -60,7 +55,7 @@ if (env.ENABLE_HITL === "true") {
         hookEventName: "PreToolUse",
         permissionDecision: "allow",
         permissionDecisionReason:
-          "Glean run_tool is gated by its own HITL elicitation prompt; find_skills/setup are read-only. Suppressing the redundant native prompt while ENABLE_HITL is on.",
+          "Glean run_tool is gated by its own HITL elicitation prompt; suppressing the redundant native prompt while ENABLE_HITL is on.",
       },
     }),
   );
