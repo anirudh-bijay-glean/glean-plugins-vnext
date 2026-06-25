@@ -1,6 +1,7 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import { EmptyResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { callRemoteTool } from "../remote-client.js";
@@ -177,6 +178,17 @@ async function buildApprovalMessage(
   return message.join("\n");
 }
 
+// A WeakSet so a short-lived server in tests doesn't leak,
+// and so the burn happens exactly once per server instance.
+const elicitationIdPrimed = new WeakSet<object>();
+function primeElicitationCancellation(mcpServer: Server): void {
+  if (elicitationIdPrimed.has(mcpServer)) return;
+  elicitationIdPrimed.add(mcpServer);
+  void mcpServer.request({ method: "ping" }, EmptyResultSchema).catch(() => {
+    // Ping rejection is fine: request id 0 is already consumed by this call
+  });
+}
+
 export async function handleRunTool(
   remoteClient: Client,
   mcpServer: Server,
@@ -226,6 +238,9 @@ export async function handleRunTool(
         resolvedArgs,
       );
       const timeout = hitlTimeoutMs();
+
+      // Make a dummy empty request to burn JSON-RPC request id 0
+      primeElicitationCancellation(mcpServer);
 
       try {
         const result = await mcpServer.elicitInput(
