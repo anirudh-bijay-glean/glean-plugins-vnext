@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { GleanOAuthClientProvider } from "./auth-provider.js";
+import { fakeBackendActive, makeFakeClient } from "./fake-backend.js";
 
 const GLEAN_PLUGIN = "GLEAN_PLUGIN";
 
@@ -129,6 +130,12 @@ export async function createRemoteClient(
   opts: RemoteClientOptions,
   chatSessionId?: string,
 ): Promise<Client> {
+  // Test-only: short-circuit to a deterministic in-memory backend (no socket,
+  // no OAuth) when GLEAN_PTC_FAKE_BACKEND is set. Inert in production.
+  if (fakeBackendActive()) {
+    return makeFakeClient();
+  }
+
   const authProvider = opts.authProvider;
 
   // Complete a pending auth flow if the user has authenticated in the browser.
