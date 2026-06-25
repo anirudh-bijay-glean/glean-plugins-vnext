@@ -179,6 +179,7 @@ function makeServer(opts: {
   elicitation?: boolean;
   clientName?: string;
   elicit?: ReturnType<typeof vi.fn>;
+  request?: ReturnType<typeof vi.fn>;
 }) {
   return {
     getClientCapabilities: vi
@@ -188,6 +189,8 @@ function makeServer(opts: {
       .fn()
       .mockReturnValue({ name: opts.clientName ?? "claude-code", version: "1" }),
     elicitInput: opts.elicit ?? vi.fn().mockResolvedValue({ action: "accept" }),
+    // Used by primeElicitationCancellation to burn request id 0.
+    request: opts.request ?? vi.fn().mockResolvedValue({}),
   } as any;
 }
 
@@ -266,6 +269,39 @@ describe("handleRunTool (HITL)", () => {
     expect(params.message).not.toContain("**");
     expect(options.timeout).toBe(300_000);
     expect(remote.callTool).toHaveBeenCalledTimes(1);
+  });
+
+  it("pings to burn request id 0 before the first elicitation (so timeout cancellation is honored), once per server", async () => {
+    // The MCP SDK's _oncancel drops notifications/cancelled with a falsy
+    // requestId, so an elicitation that lands on request id 0 never gets
+    // dismissed on timeout. We burn id 0 with a ping before the first prompt.
+    vi.stubEnv("ENABLE_HITL", "true");
+    const remote = makeRemote();
+    const request = vi.fn().mockResolvedValue({});
+    const elicit = vi.fn().mockResolvedValue({ action: "accept" });
+    const server = makeServer({ elicitation: true, elicit, request });
+    await writeToolJson(tmpDir, "jirasearch", { requires_approval: true });
+
+    await handleRunTool(remote, server, tmpDir, baseArgs);
+    await handleRunTool(remote, server, tmpDir, baseArgs);
+
+    // Ping fired exactly once for this server, and it is a ping.
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][0]).toEqual({ method: "ping" });
+    // Both prompts still ran.
+    expect(elicit).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not ping when the tool requires no approval (no elicitation)", async () => {
+    vi.stubEnv("ENABLE_HITL", "true");
+    const remote = makeRemote();
+    const request = vi.fn().mockResolvedValue({});
+    const server = makeServer({ elicitation: true, request });
+    await writeToolJson(tmpDir, "jirasearch", { requires_approval: false });
+
+    await handleRunTool(remote, server, tmpDir, baseArgs);
+
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("honors the HITL_TIMEOUT_MS override", async () => {
