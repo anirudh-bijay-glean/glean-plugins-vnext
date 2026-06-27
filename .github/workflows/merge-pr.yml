@@ -6,9 +6,11 @@ on:
 
 jobs:
   build-and-test:
+    name: Build and test
     uses: ./.github/workflows/build-and-test.yml
 
   bump-version:
+    name: Bump version
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
@@ -19,25 +21,18 @@ jobs:
       - name: Fetch current version
         id: fetch-current-version
         run: |
-          echo "currentVersion=$(cat ./plugins/glean/.claude-plugin/plugin.json | jq .version)" >> $GITHUB_OUTPUT
-
-      - name: Print current version
-        env:
-          CURRENT_VERSION: ${{ steps.fetch-current-version.outputs.currentVersion }}
-        run: |
-          echo "Current version: $CURRENT_VERSION"
+          echo "version=$(cat ./plugins/glean/.claude-plugin/plugin.json | jq .version)" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
-      - name: Fetch branch version
-        id: fetch-branch-version
+      - name: Fetch incoming version
+        id: fetch-incoming-version
         run: |
-          echo "branchVersion=$(cat ./plugins/glean/.claude-plugin/plugin.json | jq .version)" >> $GITHUB_OUTPUT
+          echo "version=$(cat ./plugins/glean/.claude-plugin/plugin.json | jq .version)" >> $GITHUB_OUTPUT
 
-      - name: Print branch version
-        env:
-          BRANCH_VERSION: ${{ steps.fetch-branch-version.outputs.branchVersion }}
+      - name: Validate incoming version
+        id: validate-incoming-version
         run: |
-          echo "Branch version: $BRANCH_VERSION"
+          
