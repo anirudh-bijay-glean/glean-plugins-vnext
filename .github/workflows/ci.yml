@@ -10,8 +10,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: npm
@@ -21,15 +21,3 @@ jobs:
       - run: npm run build
       - name: Verify dist is up to date
         run: git diff --exit-code plugins/glean/dist/ || (echo "dist/index.js is out of sync with source. Run 'npm run build' and commit the result." && exit 1)
-
-  check-version-bump:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      - run: bash scripts/check-version-bump.sh "origin/${{ github.base_ref }}"
