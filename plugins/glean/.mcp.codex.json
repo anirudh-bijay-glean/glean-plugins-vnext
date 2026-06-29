@@ -5,7 +5,7 @@
       "args": ["./start.mjs"],
       "cwd": ".",
       "env": {
-        "ENABLE_HITL": "true",
+        "ENABLE_HITL": 1,
         "HITL_TIMEOUT_MS": "300000"
       }
     }
